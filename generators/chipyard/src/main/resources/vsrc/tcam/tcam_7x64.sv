@@ -1,10 +1,11 @@
+`timescale 1ns/1ps
 
-module tcam7x64 (
+module tcam_7x64 (
     input   logic           in_clk,
     input   logic           in_csb,
     input   logic           in_web,
     input   logic   [3:0]   in_wmask,
-    input   logic   [7:0]   in_addr,
+    input   logic   [6:0]   in_addr,
     input   logic   [31:0]  in_wdata,
     output  logic   [63:0]  out_rdata
 );

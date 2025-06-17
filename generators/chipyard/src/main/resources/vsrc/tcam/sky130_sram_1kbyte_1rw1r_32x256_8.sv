@@ -39,7 +39,6 @@ module sky130_sram_1kbyte_1rw1r_32x256_8 (
 	reg	[NUM_WMASKS-1:0]	wmask0_reg;
 	reg	[ADDR_WIDTH-1:0]	addr0_reg;
 	reg	[DATA_WIDTH-1:0]	din0_reg;
-	reg	[DATA_WIDTH-1:0]	dout0;
 
 	// * All inputs are registers
 	always @(posedge clk0) begin
@@ -57,7 +56,6 @@ module sky130_sram_1kbyte_1rw1r_32x256_8 (
 
 	reg						csb1_reg;
 	reg	[ADDR_WIDTH-1:0]	addr1_reg;
-	reg	[DATA_WIDTH-1:0]	dout1;
 
 	// * All inputs are registers
 	always @(posedge clk1) begin
