@@ -78,4 +78,10 @@ class TcamMMIOConfig extends Config(
   new chipyard.harness.WithSimAXIMem ++                     // Use SimAXIMem instead of SimDRAM
   new chipyard.example.WithTCAM ++
   new freechips.rocketchip.rocket.WithNSmallCores(1) ++    // Use small core instead of huge core
+  new chipyard.config.WithPeripheryBusFrequency(100.0) ++
+  new chipyard.config.WithSystemBusFrequency(100.0) ++
+  new chipyard.config.WithFrontBusFrequency(100.0) ++
+  new chipyard.config.WithMemoryBusFrequency(100.0) ++
+  new chipyard.config.WithControlBusFrequency(100.0) ++
+  new chipyard.config.WithOffchipBusFrequency(100.0) ++
   new chipyard.config.AbstractConfig)
