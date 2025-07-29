@@ -14,7 +14,7 @@ import freechips.rocketchip.regmapper.{HasRegMap, RegField}
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util._
 
-// TCAM Parameters
+
 case class TCAMParams(
   address: BigInt = 0x4000,
   width: Int = 32,
@@ -39,13 +39,6 @@ class TCAMBlackBox extends BlackBox with HasBlackBoxPath {
   
   val chipyardDir = System.getProperty("user.dir")
   val tcamDir = s"$chipyardDir/generators/chipyard/src/main/resources/vsrc/tcam"
-  
-  // Add each Verilog file
-  //addPath(s"$tcamDir/and_gate.sv")
-  //addPath(s"$tcamDir/priority_encoder_64x6.sv")
-  //addPath(s"$tcamDir/sky130_sram_1kbyte_1rw1r_32x256_8.sv")
-  //addPath(s"$tcamDir/tcam_7x64.sv")
-  //addPath(s"$tcamDir/TCAMBlackBox.sv")
   addPath(s"$tcamDir/TCAMBlackBox.sv")
   addPath(s"$tcamDir/sky130_sram_1kbyte_1rw1r_32x256_8.sv")
 }
@@ -62,18 +55,14 @@ class TCAMTL(params: TCAMParams, beatBytes: Int)(implicit p: Parameters) extends
       val status = RegInit(0.U(5.W))     
       val control = RegInit(0.U(8.W))    
       val writeData = RegInit(0.U(32.W))  
-      val address = RegInit(0.U(28.W))
-
-      // Connect Chisel signals to new Verilog port names
+      val address = RegInit(0.U(28.W))      
       tcam.io.clk_i := clock
       tcam.io.csb_i := ~control(0)
       tcam.io.web_i := ~control(1)
       tcam.io.wmask_i := control(7, 4)
       tcam.io.addr_i := address
       tcam.io.wdata_i := writeData
-
       status := tcam.io.rdata_o
-
       
       node.regmap(
         0x00 -> Seq(RegField.r(5, status)),

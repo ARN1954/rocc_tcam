@@ -75,9 +75,9 @@ class ManyMMIOAcceleratorRocketConfig extends Config(
   new chipyard.config.AbstractConfig)
 
 class TcamMMIOConfig extends Config(
-  new chipyard.harness.WithSimAXIMem ++                     // Use SimAXIMem instead of SimDRAM
+  new chipyard.harness.WithSimAXIMem ++                     
   new chipyard.example.WithTCAM ++
-  new freechips.rocketchip.rocket.WithNSmallCores(1) ++    // Use small core instead of huge core
+  new freechips.rocketchip.rocket.WithNSmallCores(1) ++    
   new chipyard.config.WithPeripheryBusFrequency(100.0) ++
   new chipyard.config.WithSystemBusFrequency(100.0) ++
   new chipyard.config.WithFrontBusFrequency(100.0) ++
