@@ -1,21 +1,5 @@
-#include <stdint.h>
-#include <stdio.h>
-#include "mmio.h"
+#include "tcam_mmio.h"
 
-#define TCAM_BASE      0x4000
-#define TCAM_STATUS    (TCAM_BASE + 0x00)
-#define TCAM_CONTROL   (TCAM_BASE + 0x04)
-#define TCAM_WDATA     (TCAM_BASE + 0x08)
-#define TCAM_ADDRESS   (TCAM_BASE + 0x0C)
-
-
-void delay_write() {
-    for (volatile int i = 0; i < 1; i++); 
-}
-
-void delay_read() {
-    for (volatile int i = 0; i < 2; i++); 
-}
 
 uint32_t smem[513]={
     0x00000000,
@@ -531,21 +515,6 @@ uint32_t smem[513]={
     0x00000000,
     0x00000000,
 };
-
-// Write to TCAM: csb=0, web=0, wmask=0xF
-void write_tcam(uint32_t data, uint32_t address) {
-    reg_write32(TCAM_CONTROL, 0xF3); // csb=0, web=0, wmask=0xF
-    reg_write32(TCAM_ADDRESS, address);
-    reg_write32(TCAM_WDATA, data);
-    delay_write(); 
-}
-
-// Search TCAM: csb=0, web=1, wmask=0
-void search_tcam(uint32_t search_query) {
-    reg_write32(TCAM_CONTROL, 0x01); // csb=0, web=1, wmask=0
-    reg_write32(TCAM_ADDRESS, search_query);
-    delay_read(); 
-}
 
 int main() {
     printf("=== TCAM C Test ===\n");

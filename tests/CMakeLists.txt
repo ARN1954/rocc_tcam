@@ -85,7 +85,8 @@ add_executable(gcd gcd.c)
 add_executable(hello hello.c)
 add_executable(mt-hello mt-hello.c)
 add_executable(symmetric symmetric.c)
-add_executable(tcam tcam.c)
+add_executable(tcam_64x28 tcam_64x28.c)
+add_executable(tcam_32x28 tcam_32x28.c)
 #################################
 # Disassembly
 #################################
@@ -123,8 +124,8 @@ add_dump_target(gcd)
 add_dump_target(hello)
 add_dump_target(mt-hello)
 add_dump_target(symmetric)
-add_dump_target(tcam)
-
+add_dump_target(tcam_64x28)
+add_dump_target(tcam_32x28)
 
 # Add custom command to generate spiflash.img from spiflash.py
 add_custom_command(
