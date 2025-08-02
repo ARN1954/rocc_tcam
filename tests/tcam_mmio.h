@@ -30,6 +30,15 @@ void write_tcam(uint32_t data, uint32_t address) {
     delay_write(); 
 }
 
+// Write an array to TCAM with sequential addresses starting from 0
+// Works directly with arrays, no pointers
+#define write_tcam_array(data_array) do { \
+    int size = sizeof(data_array) / sizeof(data_array[0]); \
+    for(int i = 0; i < size; i++) { \
+        write_tcam(data_array[i], i); \
+    } \
+} while(0)
+
 // Search the TCAM with a query value
 // csb=0, web=1, wmask=0
 void search_tcam(uint32_t search_query) {

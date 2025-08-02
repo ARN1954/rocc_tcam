@@ -519,15 +519,14 @@ uint32_t smem[513]={
 int main() {
     printf("=== TCAM C Test ===\n");
 
-    for(int i = 0; i < 513; i++) {
-        write_tcam(smem[i], i);
-    }
+    // Use the macro that automatically calculates array size
+    write_tcam_array(smem);
 
     
     uint32_t search_query = 0x0FFC3201; 
   
     search_tcam(search_query); 
-    printf("TCAM read status: 0x%08X\n", reg_read32(TCAM_STATUS));
+    printf("TCAM read status: 0x%08X\n", read_tcam_status());
 
     return 0;
 }
