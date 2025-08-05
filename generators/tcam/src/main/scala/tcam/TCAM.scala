@@ -65,23 +65,12 @@ class TCAMBlackBox(params: TCAMParams) extends BlackBox with HasBlackBoxPath {
   val tcamDir = s"$chipyardDir/generators/tcam/src/main/resources/vsrc/tcam"
   addPath(s"$tcamDir/TCAMBlackBox.sv")
   addPath(s"$tcamDir/sky130_sram_1kbyte_1rw1r_32x256_8.sv")
+  addPath(s"$tcamDir/tcam_${tableConfig.subStrLen}x${tableConfig.potMatchAddr}.sv")
   
-  // Check if we're using the specific tcam_32x28 configuration
-  val isTCAM32x28 = params.keyWidth == 28 && params.entries == 32 && 
-                     params.tableConfig.exists(tc => tc.queryStrLen == 28 && tc.potMatchAddr == 32)
-  
-  if (isTCAM32x28) {
-    // For tcam_32x28, we only need the SRAM model
-    // The TCAMBlackBox.sv file contains the complete tcam_32x28 logic
-  } else {
-    // For generic configurations, add the parameterized modules
-    addPath(s"$tcamDir/tcam${tableConfig.subStrLen}x${tableConfig.potMatchAddr}.sv")
-    
-    val encoderWidth = log2Ceil(tableConfig.potMatchAddr)
-    val dataWidth = tableConfig.potMatchAddr
-    addPath(s"$tcamDir/priority_encoder_${dataWidth}x${encoderWidth}.sv")
-    addPath(s"$tcamDir/and_gate.sv")
-  }
+  val encoderWidth = log2Ceil(tableConfig.potMatchAddr)
+  val dataWidth = tableConfig.potMatchAddr
+  addPath(s"$tcamDir/priority_encoder_${dataWidth}x${encoderWidth}.sv")
+  addPath(s"$tcamDir/and_gate.sv")
   
   private def log2Ceil(x: Int): Int = {
     if (x <= 1) 1 else 32 - Integer.numberOfLeadingZeros(x - 1)

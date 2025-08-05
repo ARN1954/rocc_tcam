@@ -29,7 +29,7 @@ module tcam7x64 (
     logic [63:0] rdata;
 
     assign rdata = {rdata_upper, rdata_lower};
-    assign out_rdata = rdata;    
+    assign out_rdata = rdata;
 
     sky130_sram_1kbyte_1rw1r_32x256_8 dut_vtb(
         // Port 0: RW

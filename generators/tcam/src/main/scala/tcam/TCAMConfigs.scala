@@ -49,42 +49,4 @@ class WithTCAM64x28AXI4 extends Config(
   ))
 )
 
-// 32x28 TCAM configuration
-class WithTCAM32x28 extends Config(
-  new WithTCAM(TCAMParams(
-    width = 32,
-    keyWidth = 28,  // 28-bit address
-    entries = 32,   // 32 entries (6-bit output)
-    sramDepth = 256,
-    sramWidth = 32,
-    priorityEncoder = true,
-    address = 0x4000,
-    useAXI4 = false,
-    tableConfig = Some(TCAMTableConfig(
-      queryStrLen = 28,
-      subStrLen = 7,
-      totalSubStr = 4,
-      potMatchAddr = 32
-    ))
-  ))
-)
 
-// 32x28 TCAM configuration with AXI4
-class WithTCAM32x28AXI4 extends Config(
-  new WithTCAM(TCAMParams(
-    width = 32,
-    keyWidth = 28,  // 28-bit address
-    entries = 32,   // 32 entries (6-bit output)
-    sramDepth = 256,
-    sramWidth = 32,
-    priorityEncoder = true,
-    address = 0x4000,
-    useAXI4 = true,
-    tableConfig = Some(TCAMTableConfig(
-      queryStrLen = 28,
-      subStrLen = 7,
-      totalSubStr = 4,
-      potMatchAddr = 32
-    ))
-  ))
-)
