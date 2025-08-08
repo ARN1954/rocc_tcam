@@ -12,7 +12,7 @@ void delay_write() {
 }
 
 void delay_read() {
-    for (volatile int i = 0; i < 2; i++); 
+    for (volatile int i = 0; i < 100000; i++); 
 }
 
 uint32_t tcam_write(uint32_t address, uint32_t wdata, uint8_t in_web) {
@@ -73,6 +73,8 @@ int main() {
     search_tcam(search_query);
     delay_read();
     read_tcam_status();
+    // Wait for the hardware debug reads (8 dout0/1) to complete before printing status
+    delay_read();
 
     // Display result
     printf("TCAM match status: 0x%08X\n", tcam_result );
