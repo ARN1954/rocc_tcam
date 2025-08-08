@@ -2,68 +2,71 @@
 #include <stdint.h>
 #include "rocc.h"
 
-// ==== TCAM RoCC Helpers ====
+// ==== TCAM MMIO Implementation ====
 
 static uint32_t tcam_result = 0;
 static uint32_t last_query_addr = 0;
 
-static inline uint32_t tcam_issue(uint32_t address, uint32_t wdata, uint8_t in_web, uint8_t in_csb) {
+void delay_write() {
+    for (volatile int i = 0; i < 1; i++);
+}
+
+void delay_read() {
+    for (volatile int i = 0; i < 2; i++);
+}
+
+void tcam_write(uint32_t address, uint32_t wdata, uint8_t in_web) {
     uint32_t wmask = 0xF; // write all bits
+    uint8_t in_csb = 0;   // always active
 
     uint64_t rs1 = ((uint64_t)(wmask & 0xF) << 28) | (address & 0x0FFFFFFF);
     uint64_t rs2 = (uint64_t)wdata;
     uint64_t result = 0;
 
-    // funct encoding: Cat(in_web, in_csb)
+    // Manually dispatch based on funct value
     if (in_web == 0 && in_csb == 0) {
-        ROCC_INSTRUCTION_DSS(0, result, rs1, rs2, 0); // 0b00: write
+        ROCC_INSTRUCTION_DSS(0, result, rs1, rs2, 0); // funct = 0b00 (write)
     } else if (in_web == 0 && in_csb == 1) {
-        ROCC_INSTRUCTION_DSS(0, result, rs1, rs2, 1); // 0b01
+        ROCC_INSTRUCTION_DSS(0, result, rs1, rs2, 1); // funct = 0b01
     } else if (in_web == 1 && in_csb == 0) {
-        ROCC_INSTRUCTION_DSS(0, result, rs1, rs2, 2); // 0b10: search/read
-    } else { // in_web == 1 && in_csb == 1
-        ROCC_INSTRUCTION_DSS(0, result, rs1, rs2, 3); // 0b11
+        ROCC_INSTRUCTION_DSS(0, result, rs1, rs2, 2); // funct = 0b10 (search/read)
+    } else if (in_web == 1 && in_csb == 1) {
+        ROCC_INSTRUCTION_DSS(0, result, rs1, rs2, 3); // funct = 0b11
     }
-
-    return (uint32_t)result;
-}
-
-static inline void tcam_write(uint32_t address, uint32_t wdata) {
-    // Active chip, perform write; handshake ensures completion
-    tcam_result = tcam_issue(address, wdata, /*in_web=*/0, /*in_csb=*/0);
-}
-
-static inline uint32_t tcam_read_status(uint32_t address) {
-    // Active chip, read/search path; returns current status
-    return tcam_issue(address, /*wdata=*/0, /*in_web=*/1, /*in_csb=*/0);
+    tcam_result = (uint32_t)result;
 }
 
 void write_tcam(uint32_t tcam_addr, uint32_t wdata) {
-    tcam_write(tcam_addr, wdata);
+    tcam_write(tcam_addr, wdata, /*in_web=*/0);  // web=0 (write)
+    delay_write();
 }
 
 void search_tcam(uint32_t query) {
+    // Kick off search/read once; hardware computes across banks over time
+    tcam_write(query, 0, /*in_web=*/1);  // web=1 (search/read)
     last_query_addr = query;
 
-    // Kick off search
-    (void)tcam_issue(query, /*wdata=*/0, /*in_web=*/1, /*in_csb=*/0);
+    // Allow pipeline to progress a little between ops
+    delay_read();
 
-    // Poll status to allow all TCAM banks to complete and the reduction to settle
-    // Break early if a non-zero match status is observed; otherwise, take the last value
-    const int max_polls = 64; // allow enough cycles for multi-bank updates
-    uint32_t status = 0;
-    for (int i = 0; i < max_polls; i++) {
-        uint32_t cur = tcam_read_status(query);
-        status = cur; // keep latest
-        if (cur != 0) break;
+    // Issue a few additional reads to ensure each bank has been accessed
+    // and the AND-reduction has had time to settle
+    for (int i = 0; i < 8; i++) {
+        tcam_write(last_query_addr, 0, /*in_web=*/1);
     }
-    tcam_result = status;
 }
 
 uint32_t read_tcam_status() {
-    // Ensure freshness by reading again and returning the latest
-    tcam_result = tcam_read_status(last_query_addr);
-    return tcam_result;
+    // Read until status stabilizes or becomes non-zero, up to a bound
+    uint32_t prev = 0xFFFFFFFFu;
+    uint32_t cur = 0u;
+    for (int i = 0; i < 16; i++) {
+        tcam_write(last_query_addr, 0, /*in_web=*/1);
+        cur = tcam_result;
+        if (cur == prev || cur != 0u) break;
+        prev = cur;
+    }
+    return cur;
 }
 
 // ==== Test Application ====
@@ -85,7 +88,7 @@ int main() {
     uint32_t search_query = 0x00A14285;
     search_tcam(search_query);
 
-    // Display result after polling-based settle
+    // Display result after multiple readbacks
     printf("TCAM match status: 0x%08X\n", read_tcam_status());
 
     return 0;
