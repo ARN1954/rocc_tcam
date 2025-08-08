@@ -47,14 +47,12 @@ class TCAMRoCCModule(outer: TCAMRoCC, tcamParams: TCAMParams)
   io.resp.bits.rd := rdReg
   io.resp.bits.data := respData
 
-  // Drive TCAM defaults (inactive)
-  tcam.io.in_clk   := clock
-  tcam.io.in_wmask := 0.U
-  tcam.io.in_addr  := 0.U
-  tcam.io.in_wdata := 0.U
-  // Active-low controls at the TCAM interface
-  tcam.io.in_web   := true.B   // deassert write (active-low)
-  tcam.io.in_csb   := true.B   // deassert chip select (active-low)
+  // Local wires with safe defaults to ensure full initialization
+  val tcam_in_wmask = Wire(UInt(4.W));  tcam_in_wmask := 0.U
+  val tcam_in_addr  = Wire(UInt(28.W)); tcam_in_addr  := 0.U
+  val tcam_in_wdata = Wire(UInt(32.W)); tcam_in_wdata := 0.U
+  val tcam_in_web   = Wire(Bool());     tcam_in_web   := true.B  // deassert (active-low)
+  val tcam_in_csb   = Wire(Bool());     tcam_in_csb   := true.B  // deassert (active-low)
 
   switch(state) {
     is(sIdle) {
@@ -77,39 +75,32 @@ class TCAMRoCCModule(outer: TCAMRoCC, tcamParams: TCAMParams)
 
     is(sExec) {
       // Map RoCC-level active-high enables to TCAM active-low signals
-      // webActive=1 means perform write; csbActive=1 means enable chip
-      // Cases (by prior convention):
-      //   Cat(inweb, incsb):
-      //   00 -> Write
-      //   01 -> Read
-      //   10 -> Search
-      //   11 -> Reserved
       val op = Cat(inwebReg, incsbReg)
 
       // Common data/addr/wmask
-      tcam.io.in_wmask := wmaskReg
-      tcam.io.in_addr  := addrReg
-      tcam.io.in_wdata := wdataReg
+      tcam_in_wmask := wmaskReg
+      tcam_in_addr  := addrReg
+      tcam_in_wdata := wdataReg
 
       switch(op) {
         is("b00".U) { // Write
-          tcam.io.in_web := false.B // assert write (active-low)
-          tcam.io.in_csb := false.B // enable chip (active-low)
+          tcam_in_web := false.B // assert write (active-low)
+          tcam_in_csb := false.B // enable chip (active-low)
           printf("TCAMRoCC: EXEC Write wmask=0x%x addr=0x%x wdata=0x%x\n", wmaskReg, addrReg, wdataReg)
         }
         is("b01".U) { // Read
-          tcam.io.in_web := true.B  // no write
-          tcam.io.in_csb := false.B // enable chip
+          tcam_in_web := true.B  // no write
+          tcam_in_csb := false.B // enable chip
           printf("TCAMRoCC: EXEC Read  wmask=0x%x addr=0x%x\n", wmaskReg, addrReg)
         }
         is("b10".U) { // Search
-          tcam.io.in_web := true.B  // no write
-          tcam.io.in_csb := false.B // enable chip
+          tcam_in_web := true.B  // no write
+          tcam_in_csb := false.B // enable chip
           printf("TCAMRoCC: EXEC Search wmask=0x%x addr=0x%x wdata=0x%x\n", wmaskReg, addrReg, wdataReg)
         }
         is("b11".U) { // Reserved/No-op
-          tcam.io.in_web := true.B
-          tcam.io.in_csb := true.B
+          tcam_in_web := true.B
+          tcam_in_csb := true.B
           printf("TCAMRoCC: EXEC Reserved\n")
         }
       }
@@ -125,4 +116,12 @@ class TCAMRoCCModule(outer: TCAMRoCC, tcamParams: TCAMParams)
       }
     }
   }
+
+  // Single connection to BlackBox after all assignments
+  tcam.io.in_clk   := clock
+  tcam.io.in_wmask := tcam_in_wmask
+  tcam.io.in_addr  := tcam_in_addr
+  tcam.io.in_wdata := tcam_in_wdata
+  tcam.io.in_web   := tcam_in_web
+  tcam.io.in_csb   := tcam_in_csb
 }
