@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include "rocc.h"
 
-// ==== TCAM MMIO Implementation ====
+// ==== TCAM RoCC Helpers ====
 
 static uint32_t tcam_result = 0;
 static uint32_t last_query_addr = 0;
@@ -20,7 +20,7 @@ static inline uint32_t tcam_issue(uint32_t address, uint32_t wdata, uint8_t in_w
     } else if (in_web == 0 && in_csb == 1) {
         ROCC_INSTRUCTION_DSS(0, result, rs1, rs2, 1); // 0b01
     } else if (in_web == 1 && in_csb == 0) {
-        ROCC_INSTRUCTION_DSS(0, result, rs1, rs2, 2); // 0b10: search
+        ROCC_INSTRUCTION_DSS(0, result, rs1, rs2, 2); // 0b10: search/read
     } else { // in_web == 1 && in_csb == 1
         ROCC_INSTRUCTION_DSS(0, result, rs1, rs2, 3); // 0b11
     }
@@ -28,9 +28,14 @@ static inline uint32_t tcam_issue(uint32_t address, uint32_t wdata, uint8_t in_w
     return (uint32_t)result;
 }
 
-void tcam_write(uint32_t address, uint32_t wdata) {
-    // Active chip, perform write
+static inline void tcam_write(uint32_t address, uint32_t wdata) {
+    // Active chip, perform write; handshake ensures completion
     tcam_result = tcam_issue(address, wdata, /*in_web=*/0, /*in_csb=*/0);
+}
+
+static inline uint32_t tcam_read_status(uint32_t address) {
+    // Active chip, read/search path; returns current status
+    return tcam_issue(address, /*wdata=*/0, /*in_web=*/1, /*in_csb=*/0);
 }
 
 void write_tcam(uint32_t tcam_addr, uint32_t wdata) {
@@ -39,15 +44,25 @@ void write_tcam(uint32_t tcam_addr, uint32_t wdata) {
 
 void search_tcam(uint32_t query) {
     last_query_addr = query;
-    // Kick off search (active chip, search mode)
+
+    // Kick off search
     (void)tcam_issue(query, /*wdata=*/0, /*in_web=*/1, /*in_csb=*/0);
-    // Immediately read back status with a second op to observe updated out_pma
-    tcam_result = tcam_issue(query, /*wdata=*/0, /*in_web=*/1, /*in_csb=*/0);
+
+    // Poll status to allow all TCAM banks to complete and the reduction to settle
+    // Break early if a non-zero match status is observed; otherwise, take the last value
+    const int max_polls = 64; // allow enough cycles for multi-bank updates
+    uint32_t status = 0;
+    for (int i = 0; i < max_polls; i++) {
+        uint32_t cur = tcam_read_status(query);
+        status = cur; // keep latest
+        if (cur != 0) break;
+    }
+    tcam_result = status;
 }
 
 uint32_t read_tcam_status() {
-    // Optionally issue another read of current status to ensure freshness
-    tcam_result = tcam_issue(last_query_addr, /*wdata=*/0, /*in_web=*/1, /*in_csb=*/0);
+    // Ensure freshness by reading again and returning the latest
+    tcam_result = tcam_read_status(last_query_addr);
     return tcam_result;
 }
 
@@ -70,7 +85,7 @@ int main() {
     uint32_t search_query = 0x00A14285;
     search_tcam(search_query);
 
-    // Display result (after forced readback)
+    // Display result after polling-based settle
     printf("TCAM match status: 0x%08X\n", read_tcam_status());
 
     return 0;
