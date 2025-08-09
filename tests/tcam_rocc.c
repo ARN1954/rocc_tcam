@@ -7,6 +7,19 @@
 static uint32_t tcam_result = 0;
 static uint32_t last_query_addr = 0;
 
+static inline uint64_t read_cycle() {
+    uint64_t c;
+    asm volatile ("rdcycle %0" : "=r"(c));
+    return c;
+}
+
+static inline void wait_cycles(uint64_t num_cycles) {
+    uint64_t start = read_cycle();
+    while ((read_cycle() - start) < num_cycles) {
+        // busy wait
+    }
+}
+
 void delay_write() {
     for (volatile int i = 0; i < 1; i++); 
 }
@@ -73,11 +86,12 @@ int main() {
     search_tcam(search_query);
     delay_read();
     read_tcam_status();
-    // Wait for the hardware debug reads (8 dout0/1) to complete before printing status
-    delay_read();
+    // Wait enough cycles so that all 8 VTB dout reads (debug prints) complete before printing status
+    wait_cycles(200000);
 
     // Display result
     printf("TCAM match status: 0x%08X\n", tcam_result );
+    fflush(stdout);
 
     return 0;
 }
