@@ -122,7 +122,26 @@ module TCAMBlackBox (
             $display("=========================");
         end
     end
-    
+
+    // Arm/print control to ensure status prints after SRAM prints and only once per op
+    logic arm_status_print;
+    logic printed_status;
+    always_ff @(posedge in_clk) begin
+        if (in_csb) begin
+            arm_status_print <= 1'b0;
+            printed_status   <= 1'b0;
+        end else begin
+            // Arm when an active read/search is observed
+            if (in_web && !printed_status && !arm_status_print) begin
+                arm_status_print <= 1'b1;
+            end else if (arm_status_print) begin
+                // One cycle after arming: print and latch printed flag
+                $display("TCAM match status: 0x%08h", {26'd0, out_pma});
+                printed_status   <= 1'b1;
+                arm_status_print <= 1'b0;
+            end
+        end
+    end
 
 endmodule
 

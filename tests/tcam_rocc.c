@@ -86,12 +86,11 @@ int main() {
     search_tcam(search_query);
     delay_read();
     read_tcam_status();
-    // Wait enough cycles so that all 8 VTB dout reads (debug prints) complete before printing status
+    // Wait enough cycles so that all 8 VTB dout reads (debug prints) complete before printing status from Verilog
     wait_cycles(200000);
 
-    // Display result
-    printf("TCAM match status: 0x%08X\n", tcam_result );
-    fflush(stdout);
+    // Intentionally do not print the status here to avoid interleaving with Verilog $display output.
+    // The status is printed in Verilog (TCAMBlackBox.sv) one cycle after the debug reads.
 
     return 0;
 }
