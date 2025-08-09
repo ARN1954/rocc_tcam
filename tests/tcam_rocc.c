@@ -56,13 +56,16 @@ void write_tcam(uint32_t tcam_addr,uint32_t wdata) {
 }
 
 void search_tcam(uint32_t query) {
-    tcam_write( query, 0,/*in_web=*/1);  // web=1 (read), address = 0
+    tcam_write( query, 0,/*in_web=*/1);  // web=1 (search), address = query
     last_query_addr = query;
     delay_read();
 }
 
 uint32_t read_tcam_status() {
-    tcam_result = tcam_write( last_query_addr, 0,/*in_web=*/1);
+    // Issue a status op (funct=3) that does not access the TCAM
+    uint64_t result;
+    ROCC_INSTRUCTION_D(0, result, 3);
+    tcam_result = (uint32_t)result;
     return tcam_result;
 }
 
@@ -86,11 +89,11 @@ int main() {
     search_tcam(search_query);
     delay_read();
     read_tcam_status();
-    // Wait enough cycles so that all 8 VTB dout reads (debug prints) complete before printing status from Verilog
+    // Allow RTL deferred print to occur after SRAM dout prints
     wait_cycles(200000);
 
-    // Intentionally do not print the status here to avoid interleaving with Verilog $display output.
-    // The status is printed in Verilog (TCAMBlackBox.sv) one cycle after the debug reads.
+    // Optional: software print (may appear after RTL print)
+    printf("TCAM match status: 0x%08X\n", tcam_result );
 
     return 0;
 }
