@@ -25,7 +25,7 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
     printf("TCAMRoCC DEBUG: FIRE opcode=0x%x funct=0x%x rd=%d\n",
       cmd.bits.inst.opcode, cmd.bits.inst.funct, cmd.bits.inst.rd)
   }
-  val sIdle :: sExec :: sWait :: sResp :: Nil = Enum(4)
+  val sIdle :: sExec :: sProbe :: sResp :: Nil = Enum(4)
   val state = RegInit(sIdle)
 
   // Latched fields
@@ -37,6 +37,7 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
   val incsbReg  = Reg(Bool()) // desired csb ACTIVE-HIGH semantic at RoCC level
   val respData  = Reg(UInt(64.W))
   val lastPma   = Reg(UInt(6.W))
+  val probeCount = RegInit(0.U(4.W))
 
   // Defaults
   io.cmd.ready := (state === sIdle)
@@ -96,7 +97,8 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
           tcam_in_web := true.B  // no write
           tcam_in_csb := false.B // enable chip
           printf("TCAMRoCC: EXEC Search wmask=0x%x addr=0x%x wdata=0x%x\n", wmaskReg, addrReg, wdataReg)
-          // Advance to single wait cycle to capture result next cycle
+          // Start probing for a valid PMA result next cycles
+          probeCount := 0.U
         }
         is("b11".U) { // Status read (no TCAM access)
           tcam_in_web := true.B
@@ -106,8 +108,8 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
       }
 
       // Advance per-op
-      when(op === "b10".U) { // search -> wait one cycle for result
-        state := sWait
+      when(op === "b10".U) { // search -> probe for result
+        state := sProbe
       }.elsewhen(op === "b11".U) { // status -> respond immediately with lastPma
         respData := Cat(0.U(58.W), lastPma)
         state := sResp
@@ -117,19 +119,24 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
       }
     }
 
-    is(sWait) { // one cycle after asserting search: hold signals and capture
-      // Keep TCAM selected and hold inputs stable for the read-result cycle
+    is(sProbe) { // hold signals and sample up to a few cycles
+      // Hold TCAM selected and inputs stable
       tcam_in_wmask := wmaskReg
       tcam_in_addr  := addrReg
       tcam_in_wdata := wdataReg
-      tcam_in_web   := true.B   // read/search
-      tcam_in_csb   := false.B  // keep enabled
+      tcam_in_web   := true.B
+      tcam_in_csb   := false.B
 
-      // Capture the TCAM result and respond using current output
-      lastPma := tcam.io.out_pma
-      respData := Cat(0.U(58.W), tcam.io.out_pma)
-      printf("TCAMRoCC: CAPTURE out_pma=0x%x addr=0x%x\n", tcam.io.out_pma, addrReg)
-      state := sResp
+      // Sample current PMA
+      printf("TCAMRoCC: PROBE[%x] out_pma=0x%x addr=0x%x\n", probeCount, tcam.io.out_pma, addrReg)
+      val gotValid = tcam.io.out_pma.orR
+      when(gotValid || probeCount === 7.U) {
+        lastPma := tcam.io.out_pma
+        respData := Cat(0.U(58.W), tcam.io.out_pma)
+        state := sResp
+      }.otherwise {
+        probeCount := probeCount + 1.U
+      }
     }
 
     is(sResp) {
