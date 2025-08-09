@@ -37,7 +37,6 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
   val incsbReg  = Reg(Bool()) // desired csb ACTIVE-HIGH semantic at RoCC level
   val respData  = Reg(UInt(64.W))
   val lastPma   = Reg(UInt(6.W))
-  val printPending = RegInit(false.B)
 
   // Defaults
   io.cmd.ready := (state === sIdle)
@@ -97,9 +96,8 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
           tcam_in_web := true.B  // no write
           tcam_in_csb := false.B // enable chip
           printf("TCAMRoCC: EXEC Search wmask=0x%x addr=0x%x wdata=0x%x\n", wmaskReg, addrReg, wdataReg)
-          // Latch result and schedule a deferred print
+          // Latch result for later status read
           lastPma := tcam.io.out_pma
-          printPending := true.B
         }
         is("b11".U) { // Status read (no TCAM access)
           tcam_in_web := true.B
@@ -118,10 +116,9 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
     }
 
     is(sResp) {
-      // Emit deferred status print one cycle after a search
-      when(printPending) {
+      // Print match status only when responding to the status op (funct=3)
+      when(inwebReg && incsbReg) {
         printf("TCAM match status: 0x%x\n", lastPma)
-        printPending := false.B
       }
       when(io.resp.ready) {
         state := sIdle
