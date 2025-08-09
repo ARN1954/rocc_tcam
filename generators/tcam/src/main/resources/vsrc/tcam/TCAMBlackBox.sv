@@ -123,6 +123,22 @@ module TCAMBlackBox (
         end
     end
 
+    // One-cycle delayed status print to follow SRAM dout prints
+    logic        print_pending;
+    logic [5:0]  out_pma_q;
+    always @(posedge in_clk) begin
+        if (in_csb) begin
+            print_pending <= 1'b0;
+        end else begin
+            if (in_web && !print_pending) begin
+                out_pma_q <= out_pma;
+                print_pending <= 1'b1;
+            end else if (print_pending) begin
+                $display("TCAM match status: 0x%08h", {26'd0, out_pma_q});
+                print_pending <= 1'b0;
+            end
+        end
+    end
 
 endmodule
 
