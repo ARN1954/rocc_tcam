@@ -35,7 +35,10 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
   val wdataReg  = Reg(UInt(32.W))
   val inwebReg  = Reg(Bool()) // desired web ACTIVE-HIGH semantic at RoCC level
   val incsbReg  = Reg(Bool()) // desired csb ACTIVE-HIGH semantic at RoCC level
-  val respData  = Reg(UInt(5.W))
+  //val respData  = Reg(UInt(5.W))
+  val respData  = Reg(UInt(64.W))
+  val lastPma   = Reg(UInt(6.W))
+  val printPending = RegInit(false.B)
 
   // Defaults
   io.cmd.ready := (state === sIdle)
@@ -95,20 +98,31 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
           tcam_in_web := true.B  // no write
           tcam_in_csb := false.B // enable chip
           printf("TCAMRoCC: EXEC Search wmask=0x%x addr=0x%x wdata=0x%x\n", wmaskReg, addrReg, wdataReg)
+          lastPma := tcam.io.out_pma
+          printPending := true.B
         }
         is("b11".U) { // Reserved/No-op
           tcam_in_web := true.B
           tcam_in_csb := true.B
-          printf("TCAMRoCC: EXEC Reserved\n")
+          printf("TCAMRoCC: EXEC Status\n")
         }
       }
 
       // Capture output this cycle and advance to respond
-      respData := tcam.io.out_pma
+      //respData := tcam.io.out_pma
+      when(op === "b11".U) {
+        respData := Cat(0.U(58.W), lastPma) // return last search result
+      }.otherwise {
+        respData := tcam.io.out_pma
+      }
       state := sResp
     }
 
     is(sResp) {
+      when(printPending) {
+        printf("TCAM match status: 0x%x\n", lastPma)
+        printPending := false.B
+      }
       when(io.resp.ready) {
         state := sIdle
       }
