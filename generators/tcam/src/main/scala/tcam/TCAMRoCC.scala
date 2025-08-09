@@ -38,6 +38,7 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
   val respData  = Reg(UInt(64.W))
   val lastPma   = Reg(UInt(6.W))
   val probeCount = RegInit(0.U(4.W))
+  val lastPmaValid = RegInit(false.B)
 
   // Defaults
   io.cmd.ready := (state === sIdle)
@@ -99,6 +100,7 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
           printf("TCAMRoCC: EXEC Search wmask=0x%x addr=0x%x wdata=0x%x\n", wmaskReg, addrReg, wdataReg)
           // Start probing for a valid PMA result next cycles
           probeCount := 0.U
+          lastPmaValid := false.B
         }
         is("b11".U) { // Status read (no TCAM access)
           tcam_in_web := true.B
@@ -132,6 +134,7 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
       val gotValid = tcam.io.out_pma.orR
       when(gotValid || probeCount === 7.U) {
         lastPma := tcam.io.out_pma
+        lastPmaValid := gotValid
         respData := Cat(0.U(58.W), tcam.io.out_pma)
         state := sResp
       }.otherwise {
@@ -142,7 +145,11 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
     is(sResp) {
       // Print match status only when responding to the status op (funct=3)
       when(inwebReg && incsbReg) {
-        printf("TCAM match status: 0x%x\n", lastPma)
+        when(lastPmaValid) {
+          printf("TCAM match status: 0x%x\n", lastPma)
+        }.otherwise {
+          printf("TCAM match status: (no valid result)\n")
+        }
       }
       when(io.resp.ready) {
         state := sIdle

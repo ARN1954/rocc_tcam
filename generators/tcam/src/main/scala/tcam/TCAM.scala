@@ -41,7 +41,7 @@ class TCAMIO extends Bundle {
   val in_wmask = Input(UInt(4.W))
   val in_addr = Input(UInt(28.W))
   val in_wdata = Input(UInt(32.W))
-  val out_pma = Output(UInt(5.W))
+  val out_pma = Output(UInt(6.W))
 }
 
 // Blackbox wrapper for generated RTL
