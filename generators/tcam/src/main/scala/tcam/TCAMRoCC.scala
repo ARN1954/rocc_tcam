@@ -121,6 +121,7 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
       // Capture the TCAM result and respond using current output
       lastPma := tcam.io.out_pma
       respData := Cat(0.U(58.W), tcam.io.out_pma)
+      printf("TCAMRoCC: CAPTURE out_pma=0x%x addr=0x%x\n", tcam.io.out_pma, addrReg)
       state := sResp
     }
 
