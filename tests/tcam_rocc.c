@@ -89,11 +89,6 @@ int main() {
     search_tcam(search_query);
     delay_read();
     read_tcam_status();
-    // Allow RTL deferred print to occur after SRAM dout prints
-    wait_cycles(200000);
-
-    // Optional: software print (may appear after RTL print)
-    printf("TCAM match status: 0x%08X\n", tcam_result );
 
     return 0;
 }
