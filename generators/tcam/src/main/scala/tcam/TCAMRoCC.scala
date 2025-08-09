@@ -25,7 +25,7 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
     printf("TCAMRoCC DEBUG: FIRE opcode=0x%x funct=0x%x rd=%d\n",
       cmd.bits.inst.opcode, cmd.bits.inst.funct, cmd.bits.inst.rd)
   }
-  val sIdle :: sExec :: sWait :: sResp :: Nil = Enum(4)
+  val sIdle :: sExec :: sWait :: sWait2 :: sResp :: Nil = Enum(5)
   val state = RegInit(sIdle)
 
   // Latched fields
@@ -96,7 +96,7 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
           tcam_in_web := true.B  // no write
           tcam_in_csb := false.B // enable chip
           printf("TCAMRoCC: EXEC Search wmask=0x%x addr=0x%x wdata=0x%x\n", wmaskReg, addrReg, wdataReg)
-          // Advance to wait state to capture result next cycle
+          // Advance to wait state to capture result later
         }
         is("b11".U) { // Status read (no TCAM access)
           tcam_in_web := true.B
@@ -106,7 +106,7 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
       }
 
       // Advance per-op
-      when(op === "b10".U) { // search -> wait one cycle for result
+      when(op === "b10".U) { // search -> wait two cycles for result
         state := sWait
       }.elsewhen(op === "b11".U) { // status -> respond immediately with lastPma
         respData := Cat(0.U(58.W), lastPma)
@@ -117,8 +117,22 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
       }
     }
 
-    is(sWait) { // one cycle after asserting search
-      // Capture the TCAM result and respond using current output
+    is(sWait) { // first cycle after asserting search: hold signals
+      tcam_in_wmask := wmaskReg
+      tcam_in_addr  := addrReg
+      tcam_in_wdata := wdataReg
+      tcam_in_web   := true.B
+      tcam_in_csb   := false.B
+      state := sWait2
+    }
+
+    is(sWait2) { // second cycle: capture and respond
+      tcam_in_wmask := wmaskReg
+      tcam_in_addr  := addrReg
+      tcam_in_wdata := wdataReg
+      tcam_in_web   := true.B
+      tcam_in_csb   := false.B
+
       lastPma := tcam.io.out_pma
       respData := Cat(0.U(58.W), tcam.io.out_pma)
       printf("TCAMRoCC: CAPTURE out_pma=0x%x addr=0x%x\n", tcam.io.out_pma, addrReg)
