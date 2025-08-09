@@ -119,6 +119,23 @@ module TCAMBlackBox (
             $display("vtb_addr1 = %h", vtb_addr1);
             $display("vtb_addr2 = %h", vtb_addr2);
             $display("vtb_addr3 = %h", vtb_addr3);
+            // TCAM block read data
+            $display("out_rdata0 = %064b", out_rdata0);
+            $display("out_rdata1 = %064b", out_rdata1);
+            $display("out_rdata2 = %064b", out_rdata2);
+            $display("out_rdata3 = %064b", out_rdata3);
+            // AND gate stage details
+            $display("AND0 inA=out_rdata0=%064b", out_rdata0);
+            $display("AND0 inB=out_rdata1=%064b", out_rdata1);
+            $display("AND0 out = out_andgate0=%064b", out_andgate0);
+            $display("AND1 inA=out_andgate0=%064b", out_andgate0);
+            $display("AND1 inB=out_rdata2  =%064b", out_rdata2);
+            $display("AND1 out = out_andgate1=%064b", out_andgate1);
+            $display("AND2 inA=out_andgate1=%064b", out_andgate1);
+            $display("AND2 inB=out_rdata3  =%064b", out_rdata3);
+            $display("AND2 out = out_andgate =%064b", out_andgate);
+            // Priority encoder input/output
+            $display("priority_in (to encoder) = %064b", out_andgate);
             $display("out_pma = %h", out_pma);
             $display("=========================");
         end
