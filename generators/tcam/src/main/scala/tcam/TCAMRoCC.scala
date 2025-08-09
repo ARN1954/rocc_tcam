@@ -25,7 +25,7 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
     printf("TCAMRoCC DEBUG: FIRE opcode=0x%x funct=0x%x rd=%d\n",
       cmd.bits.inst.opcode, cmd.bits.inst.funct, cmd.bits.inst.rd)
   }
-  val sIdle :: sExec :: sResp :: Nil = Enum(3)
+  val sIdle :: sExec :: sWait :: sResp :: Nil = Enum(4)
   val state = RegInit(sIdle)
 
   // Latched fields
@@ -96,8 +96,7 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
           tcam_in_web := true.B  // no write
           tcam_in_csb := false.B // enable chip
           printf("TCAMRoCC: EXEC Search wmask=0x%x addr=0x%x wdata=0x%x\n", wmaskReg, addrReg, wdataReg)
-          // Latch result for later status read
-          lastPma := tcam.io.out_pma
+          // Advance to wait state to capture result next cycle
         }
         is("b11".U) { // Status read (no TCAM access)
           tcam_in_web := true.B
@@ -106,12 +105,22 @@ class TCAMRoCC(opcodes: OpcodeSet, tcamParams: TCAMParams)(implicit p: Parameter
         }
       }
 
-      // Prepare response data per op and advance to respond
-      when(op === "b11".U) {
-        respData := Cat(0.U(58.W), lastPma) // return last search result
-      }.otherwise {
+      // Advance per-op
+      when(op === "b10".U) { // search -> wait one cycle for result
+        state := sWait
+      }.elsewhen(op === "b11".U) { // status -> respond immediately with lastPma
+        respData := Cat(0.U(58.W), lastPma)
+        state := sResp
+      }.otherwise { // read/write -> respond this cycle
         respData := tcam.io.out_pma
+        state := sResp
       }
+    }
+
+    is(sWait) { // one cycle after asserting search
+      // Capture the TCAM result and respond using current output
+      lastPma := tcam.io.out_pma
+      respData := Cat(0.U(58.W), tcam.io.out_pma)
       state := sResp
     }
 
