@@ -119,6 +119,7 @@ module TCAMBlackBox (
             $display("vtb_addr1 = %h", vtb_addr1);
             $display("vtb_addr2 = %h", vtb_addr2);
             $display("vtb_addr3 = %h", vtb_addr3);
+            $display("out_pma = %h", out_pma);
             $display("=========================");
         end
     end

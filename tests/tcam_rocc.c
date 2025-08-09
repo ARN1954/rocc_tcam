@@ -7,16 +7,16 @@
 static uint32_t tcam_result = 0;
 static uint32_t last_query_addr = 0;
 
-void delay_write() {
-    for (volatile int i = 0; i < 1; i++); 
-}
+// void delay_write() {
+//     for (volatile int i = 0; i < 1; i++); 
+// }
 
-void delay_read() {
-    for (volatile int i = 0; i < 2; i++); 
-}
-void delay_long() {
-    for (volatile int i = 0; i < 1000; i++); 
-}
+// void delay_read() {
+//     for (volatile int i = 0; i < 2; i++); 
+// }
+// void delay_long() {
+//     for (volatile int i = 0; i < 1000; i++); 
+// }
 void tcam_write(uint32_t address, uint32_t wdata, uint8_t in_web) {
     uint32_t wmask = 0xF; // write all bits
     uint8_t in_csb = 0;   // always active
@@ -41,13 +41,13 @@ void tcam_write(uint32_t address, uint32_t wdata, uint8_t in_web) {
 
 void write_tcam(uint32_t tcam_addr,uint32_t wdata) {    
     tcam_write(tcam_addr, wdata, /*in_web=*/0);  // web=0 (write)
-    delay_write();
+    // delay_write();
 }
 
 void search_tcam(uint32_t query) {
     tcam_write( query, 0,/*in_web=*/1);  // web=1 (read), address = 0
     last_query_addr = query;
-    delay_read();
+    // delay_read();
 }
 
 uint32_t read_tcam_status() {
@@ -75,8 +75,7 @@ int main() {
     // Search for a value in TCAM
     uint32_t search_query = 0x00A14285;
     search_tcam(search_query);
-    delay_long();
-    read_tcam_status();
+    // delay_long();
     // Display result
     printf("TCAM match status: 0x%08X\n", read_tcam_status());
 

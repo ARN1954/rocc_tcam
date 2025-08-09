@@ -411,6 +411,7 @@ class TcamRtlWrapperGenerator:
             '{:12s}$display("vtb_addr1 = %h", vtb_addr1);'.format(' '),
             '{:12s}$display("vtb_addr2 = %h", vtb_addr2);'.format(' '),
             '{:12s}$display("vtb_addr3 = %h", vtb_addr3);'.format(' '),
+            '{:12s}$display("out_pma = %h", out_pma);'.format(' '),            
             '{:12s}$display("=========================");'.format(' '),
             '{:8s}end'.format(' '),
             '{:4s}end'.format(' '),
