@@ -14,37 +14,36 @@
 
 // Delay functions for timing
 void delay_write() {
-    for (volatile int i = 0; i < 1; i++); 
+    for (volatile int i = 0; i < 1000; i++); 
 }
 
 void delay_read() {
-    for (volatile int i = 0; i < 2; i++); 
+    for (volatile int i = 0; i < 1000; i++); 
 }
 
 // Write a value to the TCAM at a given address
-// csb=0, web=0, wmask=0xF
+// Sequence: set address+data -> assert (csb=0, web=0, wmask=0xF) -> wait -> deassert csb
 void write_tcam(uint32_t data, uint32_t address) {
-    reg_write32(TCAM_CONTROL, 0xF3); // csb=0, web=0, wmask=0xF
+    // Program address and data first
     reg_write32(TCAM_ADDRESS, address);
     reg_write32(TCAM_WDATA, data);
-    delay_write(); 
+    // Assert control: csb=0 (bit0=1), web=0 (bit1=1), wmask=0xF (bits7..4=1111)
+    reg_write32(TCAM_CONTROL, 0xF3);
+    delay_write();
+    // Deassert csb while keeping other fields (bit0=0 -> in_csb=1)
+    reg_write32(TCAM_CONTROL, 0xF2);
 }
 
-// Write an array to TCAM with sequential addresses starting from 0
-// Works directly with arrays, no pointers
-#define write_tcam_array(data_array) do { \
-    int size = sizeof(data_array) / sizeof(data_array[0]); \
-    for(int i = 0; i < size; i++) { \
-        write_tcam(data_array[i], i); \
-    } \
-} while(0)
-
 // Search the TCAM with a query value
-// csb=0, web=1, wmask=0
+// Sequence: set address -> assert (csb=0, web=1) -> wait -> optionally deassert csb
 void search_tcam(uint32_t search_query) {
-    reg_write32(TCAM_CONTROL, 0x01); // csb=0, web=1, wmask=0
+    // Program query address first
     reg_write32(TCAM_ADDRESS, search_query);
-    delay_read(); 
+    // Assert control: csb=0 (bit0=1), web=1 (bit1=0), wmask=0 (bits7..4)
+    reg_write32(TCAM_CONTROL, 0x01);
+    delay_read();
+    // Deassert csb after allowing one cycle for read path
+    reg_write32(TCAM_CONTROL, 0x00);
 }
 
 // Read the TCAM status (priority match address)
